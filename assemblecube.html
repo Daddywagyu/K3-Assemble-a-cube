@@ -1,0 +1,141 @@
+<!DOCTYPE html><html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ลูกบาศก์มหัศจรรย์</title>
+<link href="https://fonts.googleapis.com/css2?family=Mali:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#d6f0ff;--pn:#fff;--ink:#2b2d42;--a:#ff5d5d;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#1c2845;--pn:#33456e;--ink:#fff}}
+:root[data-theme=dark]{--bg:#1c2845;--pn:#33456e;--ink:#fff}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:Mali,'Noto Sans Thai',Tahoma,sans-serif;overflow:hidden;display:flex;flex-direction:column;-webkit-user-select:none;user-select:none}
+header{display:flex;gap:10px;padding:8px 10px}
+button{font:inherit;font-weight:700;font-size:17px;min-width:52px;min-height:52px;padding:0 12px;border:0;border-radius:16px;background:var(--pn);color:var(--ink);box-shadow:0 5px 0 rgba(0,0,0,.22);touch-action:manipulation;cursor:pointer}
+button:active{transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,.22)}
+button:focus-visible{outline:4px solid #ffb703}
+button.on{background:var(--a);color:#fff}
+button.sw{min-width:48px;width:48px;height:48px;border-radius:50%;border:5px solid #fff;padding:0}
+button.sw.sel{border-color:#222;transform:scale(1.15)}
+#stage{flex:1;position:relative;min-height:0}
+canvas#c{width:100%;height:100%;display:block;touch-action:none}
+#q{position:absolute;left:10px;top:6px;max-width:60%;font-size:22px;font-weight:700;background:var(--pn);padding:8px 14px;border-radius:18px;box-shadow:0 4px 0 rgba(0,0,0,.15)}
+#vn{position:absolute;left:10px;bottom:8px;font-size:22px;font-weight:700}
+#v2{position:absolute;right:8px;top:8px;background:#fff;color:#222;border-radius:14px;padding:6px;text-align:center;font-weight:700;display:none}
+#v2 canvas{width:110px;height:110px;display:block}
+footer{padding:6px 10px 10px;display:flex;flex-direction:column;gap:8px;align-items:center}
+.row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center}
+</style></head><body>
+<header><button class="on" id="t1">1 สร้างและหมุนดู</button><button id="t2">2 ต่อชิ้นส่วน</button></header>
+<div id="stage"><canvas id="c"></canvas><div id="q"></div><div id="vn"></div><div id="v2"><div id="v2t"></div><canvas id="v2c"></canvas></div></div>
+<footer id="ctl"></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id),rnd=n=>Math.floor(Math.random()*n);
+const COL=[0xff4b4b,0xffd23f,0x3b82f6,0x3ecf5e,0xff9f1c,0xa259ff],HEX=COL.map(c=>'#'+c.toString(16).padStart(6,'0')),MONO=0xf6c35b;
+const R=new THREE.WebGLRenderer({canvas:$('c'),antialias:true,alpha:true});R.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(40,1,.1,100);cam.position.z=17;
+scene.add(new THREE.AmbientLight(0xffffff,.7));const dl=new THREE.DirectionalLight(0xffffff,.75);dl.position.set(4,8,6);scene.add(dl);
+const world=new THREE.Group(),bd=new THREE.Group();bd.position.set(.5,-3.5,.5);scene.add(world);world.add(bd);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(8,8),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.2,side:THREE.DoubleSide}));floor.rotation.x=-Math.PI/2;floor.position.set(-.5,-.5,-.5);
+const grid=(()=>{const v=[],lo=[-4.5,-.5,-4.5],hi=[3.5,7.5,3.5];for(let a=0;a<3;a++)for(const s of[lo[a],hi[a]]){const b=(a+1)%3,c=(a+2)%3;for(let i=0;i<=8;i++){let p=[0,0,0],q=[0,0,0];p[a]=q[a]=s;p[b]=q[b]=lo[b]+i;p[c]=lo[c];q[c]=hi[c];v.push(...p,...q);p=[0,0,0];q=[0,0,0];p[a]=q[a]=s;p[c]=q[c]=lo[c]+i;p[b]=lo[b];q[b]=hi[b];v.push(...p,...q)}}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));return new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0x44546f,transparent:true,opacity:.1,depthWrite:false}))})();bd.add(floor,grid);
+const BG=new THREE.BoxGeometry(.94,.94,.94),EG=new THREE.EdgesGeometry(BG),EM=new THREE.LineBasicMaterial({color:0x1b2440});
+const col=c=>colorOn?COL[c]:MONO;
+function cube(p,c,op){const m=new THREE.Mesh(BG,new THREE.MeshLambertMaterial({color:c,transparent:!!op,opacity:op||1}));m.add(new THREE.LineSegments(EG,EM));m.position.set(...p);return m}
+const clr=g=>{while(g.children.length)g.remove(g.children[0])};
+let W=1,H=1;function rs(){const s=$('stage');W=s.clientWidth;H=s.clientHeight;R.setSize(W,H,false);cam.aspect=W/H;cam.updateProjectionMatrix()}addEventListener('resize',rs);
+
+/* views */
+const VN=['front','back','left','right','top','bottom'],TH={front:'ด้านหน้า',back:'ด้านหลัง',left:'ด้านซ้าย',right:'ด้านขวา',top:'ด้านบน',bottom:'ด้านล่าง'};
+const VD={front:{d:[0,0,1],r:[1,0,0],u:[0,1,0]},back:{d:[0,0,-1],r:[-1,0,0],u:[0,1,0]},left:{d:[-1,0,0],r:[0,0,1],u:[0,1,0]},right:{d:[1,0,0],r:[0,0,-1],u:[0,1,0]},top:{d:[0,1,0],r:[1,0,0],u:[0,0,-1]},bottom:{d:[0,-1,0],r:[1,0,0],u:[0,0,1]}};
+const E=(x,y)=>new THREE.Quaternion().setFromEuler(new THREE.Euler(x,y,0)),h=Math.PI/2,HOME=E(.5,-.6);
+const VQ={front:E(0,0),back:E(0,Math.PI),left:E(0,h),right:E(0,-h),top:E(h,0),bottom:E(-h,0)};
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+function proj(cs,v){const V=VD[v],m={};cs.forEach((c,i)=>{const x=dot(c,V.r),y=dot(c,V.u),z=dot(c,V.d),k=x+','+y;if(!m[k]||m[k].z<z)m[k]={x,y,z,i}});return Object.values(m)}
+function drw(cv,p,cols){cv.width=cv.height=110;const g=cv.getContext('2d'),xs=p.map(a=>a.x),ys=p.map(a=>a.y),mx=Math.min(...xs),my=Math.max(...ys),n=Math.max(Math.max(...xs)-mx,my-Math.min(...ys),2)+1,s=Math.floor(100/n);
+ p.forEach(a=>{g.fillStyle=cols[a.i];g.fillRect(5+(a.x-mx)*s,5+(my-a.y)*s,s,s);g.strokeStyle='#1b2440';g.lineWidth=2;g.strokeRect(5+(a.x-mx)*s,5+(my-a.y)*s,s,s)})}
+
+/* state */
+let mode=1,phase='build',pcs=[],act=0,sel=0,tool='add',cur=0,whole=false,colorOn=true,done=false,goal=null,spinW=false,ver=0,lastKey='';
+const AX=[[1,0,0],[0,1,0],[0,0,1]],say=t=>$('q').textContent=t;
+const RF=[([x,y,z])=>[x,-z,y],([x,y,z])=>[z,y,-x],([x,y,z])=>[-y,x,z]];
+const rot=(cs,a,s)=>{const o=cs[0].p;return cs.map(q=>{let v=q.p.map((t,i)=>t-o[i]);for(let k=0;k<(s>0?1:3);k++)v=RF[a](v);return{c:q.c,p:v.map((t,i)=>t+o[i])}})};
+const abs=p=>p.cells.map(q=>q.p.map((t,i)=>t+p.pos[i]));
+const key=c=>c.join();
+function mkP(){const g=new THREE.Group();bd.add(g);return{cells:[],pos:[0,0,0],g}}
+function draw(i){const p=pcs[i];clr(p.g);p.cells.forEach((q,k)=>{const m=cube(q.p,col(q.c));m.userData={pi:i,k};if(phase=='asm'&&i==sel)m.material.emissive.setHex(0x553300);p.g.add(m)});p.g.position.set(...p.pos);ver++}
+const drawAll=()=>pcs.forEach((_,i)=>draw(i));
+function connected(cs){if(cs.length<2)return true;const s=new Set(cs.map(q=>key(q.p))),seen=new Set([key(cs[0].p)]),st=[cs[0].p];
+ while(st.length){const c=st.pop();for(let a=0;a<3;a++)for(const d of[-1,1]){const n=c.slice();n[a]+=d;const k=key(n);if(s.has(k)&&!seen.has(k)){seen.add(k);st.push(n)}}}return seen.size==cs.length}
+const ov=()=>{const s=new Set();for(const p of pcs)for(const c of abs(p)){if(s.has(key(c)))return 1;s.add(key(c))}return 0};
+function touching(){const b=new Set(abs(pcs[1]).map(key));return abs(pcs[0]).some(c=>{for(let a=0;a<3;a++)for(const d of[-1,1]){const n=c.slice();n[a]+=d;if(b.has(key(n)))return 1}})}
+
+/* editing */
+const maxN=()=>mode==1?20:10;
+function add(i,p){const P=pcs[i];if(p[0]<-4||p[0]>3||p[2]<-4||p[2]>3||p[1]<0||p[1]>7)return say('เต็มพื้นที่แล้ว');
+ if(P.cells.some(q=>key(q.p)==key(p)))return;if(P.cells.length>=maxN())return say(mode==1?'วางได้สูงสุด 20 ลูกนะ':'ชิ้นนี้ครบ 10 ลูกแล้ว');
+ const t=P.cells.concat([{p,c:cur}]);if(mode==2&&!connected(t))return say('ต้องวางติดกับลูกเดิมนะ');P.cells=t;draw(i);ctl();say(mode==1?'ลากนิ้วหมุนดูได้เลย':'ชิ้น '+'AB'[i]+' มี '+t.length+' ลูก')}
+function del(i,k){const P=pcs[i],t=P.cells.filter((_,j)=>j!=k);if(mode==2&&!connected(t))return say('ลบลูกนี้แล้วชิ้นส่วนจะขาดกัน');P.cells=t;draw(i);ctl()}
+function paint(i,k){const P=pcs[i];(whole?P.cells:[P.cells[k]]).forEach(q=>q.c=cur);draw(i)}
+function recolor(f){(mode==1||phase=='asm'?pcs:[pcs[act]]).forEach(p=>p.cells.forEach(q=>q.c=f(q)));drawAll()}
+
+/* input */
+const cv=$('c'),ptr=new Map(),rc=new THREE.Raycaster(),pl=new THREE.Plane(new THREE.Vector3(0,0,1),0),tp=new THREE.Vector3(),qa=new THREE.Quaternion();let drag=null,pd=1;
+const pdist=()=>{const a=[...ptr.values()];return Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1])||1};
+const ndc=e=>{const r=cv.getBoundingClientRect();return new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1)};
+const meshes=()=>pcs.filter(p=>p.g.visible).flatMap(p=>p.g.children);
+function spin(dx,dy){qa.setFromAxisAngle(new THREE.Vector3(0,1,0),dx*.012);world.quaternion.premultiply(qa);qa.setFromAxisAngle(new THREE.Vector3(1,0,0),dy*.012);world.quaternion.premultiply(qa)}
+function tap(e){rc.setFromCamera(ndc(e),cam);world.updateMatrixWorld();const hs=rc.intersectObjects(floor.visible?[...meshes(),floor]:meshes(),false);if(!hs.length)return;const o=hs[0].object;
+ if(o===floor){if(tool=='add'){const l=bd.worldToLocal(hs[0].point.clone());add(mode==1?0:act,[Math.round(l.x),0,Math.round(l.z)])}return}
+ const{pi,k}=o.userData;if(tool=='del')del(pi,k);else if(tool=='paint')paint(pi,k);else if(tool=='add'){const n=hs[0].face.normal,p=pcs[pi].cells[k].p;add(pi,[p[0]+Math.round(n.x),p[1]+Math.round(n.y),p[2]+Math.round(n.z)])}}
+cv.onpointerdown=e=>{cv.setPointerCapture(e.pointerId);ptr.set(e.pointerId,[e.clientX,e.clientY]);goal=null;if(ptr.size>1){drag=null;pd=pdist();return}drag={x0:e.clientX,y0:e.clientY,mv:0};
+ if(phase=='asm'&&tool=='move'){rc.setFromCamera(ndc(e),cam);world.updateMatrixWorld();const hs=rc.intersectObjects(meshes(),false);
+  if(hs.length){const i=hs[0].object.userData.pi,p=pcs[i];sel=i;pl.constant=-hs[0].point.z;drag.p=p;drag.s=bd.worldToLocal(hs[0].point.clone());drag.o=p.pos.slice();drawAll()}}};
+cv.onpointermove=e=>{if(!ptr.has(e.pointerId))return;const o=ptr.get(e.pointerId);ptr.set(e.pointerId,[e.clientX,e.clientY]);
+ if(ptr.size>1){const d=pdist();cam.position.z=Math.min(32,Math.max(8,cam.position.z*pd/d));pd=d;return}
+ if(!drag)return;if(!drag.mv&&Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>8)drag.mv=1;if(!drag.mv)return;
+ if(drag.p){rc.setFromCamera(ndc(e),cam);world.updateMatrixWorld();if(rc.ray.intersectPlane(pl,tp)){const l=bd.worldToLocal(tp.clone());drag.p.g.position.set(drag.o[0]+l.x-drag.s.x,drag.o[1]+l.y-drag.s.y,drag.o[2]+l.z-drag.s.z)}}else spin(e.clientX-o[0],e.clientY-o[1])};
+const up=e=>{ptr.delete(e.pointerId);if(!drag)return;const d=drag;if(!ptr.size)drag=null;
+ if(d.p){if(d.mv){const p=d.p;p.pos=p.g.position.toArray().map(Math.round);if(ov()){p.pos=d.o;say('ชนกันนะ ลองวางตรงอื่น')}p.g.position.set(...p.pos);chkAsm()}}else if(!d.mv&&e.type=='pointerup')tap(e)};
+cv.onpointerup=cv.onpointercancel=up;
+cv.addEventListener('wheel',e=>{e.preventDefault();cam.position.z=Math.min(32,Math.max(8,cam.position.z*(1+e.deltaY*.001)))},{passive:false});
+
+/* modes */
+function chkAsm(){const ok=!ov()&&touching();if(ok&&!done){done=true;say('ต่อกันสำเร็จ! 🎉 หมุนดูเองได้ และขยับชิ้นส่วนต่อได้นะ');ctl()}else if(!ok&&done){done=false;say('ชิ้นส่วนแยกกันแล้ว ลองต่อใหม่นะ');ctl()}}
+function nudge(P){const o=P.pos.slice();for(let r=1;r<=14;r++){let best=null,bs=1e9;for(let x=-r;x<=r;x++)for(let y=-r;y<=r;y++)for(let z=-r;z<=r;z++){if(Math.max(Math.abs(x),Math.abs(y),Math.abs(z))!=r)continue;P.pos=[o[0]+x,o[1]+y,o[2]+z];if(Math.min(...abs(P).map(c=>c[1]))<0||ov())continue;const d=x*x+y*y+z*z;if(d<bs){bs=d;best=P.pos}}if(best){P.pos=best;return 1}}P.pos=o;return 0}
+function rsel(sa,s){const P=pcs[sel],v=new THREE.Vector3(...AX[sa]).applyQuaternion(world.quaternion.clone().invert()),o=P.cells,a=[0,1,2].sort((p,q)=>Math.abs(v.getComponent(q))-Math.abs(v.getComponent(p)))[0];
+ P.cells=rot(o,a,s*Math.sign(v.getComponent(a)));if(ov()){if(nudge(P))say('ชนกัน เลยเลื่อนชิ้นส่วนออกให้อัตโนมัติ');else{P.cells=o;say('ไม่มีที่ว่างพอ ลองย้ายชิ้นส่วนก่อนนะ')}}draw(sel);chkAsm()}
+function setMode(m){mode=m;phase='build';done=false;spinW=false;tool='add';act=0;sel=0;goal=null;pcs.forEach(p=>bd.remove(p.g));pcs=m==1?[mkP()]:[mkP(),mkP()];pcs.forEach((p,i)=>p.g.visible=i==0);floor.visible=grid.visible=true;
+ world.quaternion.copy(HOME);$('t1').classList.toggle('on',m==1);$('t2').classList.toggle('on',m==2);
+ say(m==1?'แตะที่พื้นเพื่อวางลูกบาศก์ แล้วลากหมุนดูนะ':'สร้างชิ้น A ก่อน (2–10 ลูก) แล้วสร้างชิ้น B');ctl();rs()}
+function toAsm(){if(pcs.some(p=>p.cells.length<2))return say('ทำให้ครบ ชิ้นละ 2–10 ลูกก่อนนะ');
+ pcs.forEach((p,i)=>{const m=[0,1,2].map(a=>Math.min(...p.cells.map(q=>q.p[a])));p.cells.forEach(q=>q.p=q.p.map((t,a)=>t-m[a]));p.pos=i?[1,0,0]:[-2-Math.max(...p.cells.map(q=>q.p[0])),0,0];p.g.visible=true});
+ phase='asm';tool='move';done=false;spinW=false;sel=0;floor.visible=false;world.quaternion.copy(E(.25,-.3));drawAll();say('ลากชิ้นส่วนมาต่อกัน หมุนชิ้นได้ด้วยปุ่ม 🔄');ctl()}
+function toBuild(){phase='build';done=false;spinW=false;tool='add';pcs.forEach((p,i)=>{p.pos=[0,0,0];p.g.visible=i==act});floor.visible=grid.visible=true;world.quaternion.copy(HOME);drawAll();say('แก้ชิ้นส่วนได้เลย');ctl()}
+
+/* controls */
+const B=(t,f,c)=>{const b=document.createElement('button');b.innerHTML=t;b.onclick=f;if(c)b.className=c;return b},row=()=>{const r=document.createElement('div');r.className='row';return r};
+function ctl(){const c=$('ctl');c.innerHTML='';const r1=row(),r2=row(),r3=row(),r4=row(),T=(t,n)=>B(t,()=>{tool=n;ctl()},tool==n?'on':'');
+ if(mode==2&&phase=='build')['A','B'].forEach((n,i)=>r1.append(B('ชิ้น '+n+' ('+pcs[i].cells.length+'/10)',()=>{act=i;pcs.forEach((p,j)=>p.g.visible=j==i);ctl();say('กำลังสร้างชิ้น '+n)},act==i?'on':'')));
+ if(phase=='build')r1.append(T('🧱 วาง','add'),T('🧽 ลบ','del'),T('🖌 ระบายสี','paint'),B('🗑 ล้าง',()=>{(mode==1?pcs:[pcs[act]]).forEach(p=>p.cells=[]);drawAll();ctl()}));
+ else r1.append(T('🖐 ย้าย','move'),T('🖌 ระบายสี','paint'),B('🔄 หมุนชิ้น:',()=>{}));
+ if(phase=='asm')[['◀',1,-1],['▶',1,1],['▲',0,-1],['▼',0,1],['⟲',2,1]].forEach(([t,a,s])=>r1.append(B(t,()=>rsel(a,s))));
+ HEX.forEach((hx,i)=>{const b=B('',()=>{cur=i;ctl()},'sw'+(i==cur?' sel':''));b.style.background=hx;r2.append(b)});
+ r2.append(B(whole?'🪣 ทั้งชิ้น':'🪣 ทีละลูก',()=>{whole=!whole;ctl()}),B(colorOn?'🎨 สี: เปิด':'🎨 สี: ปิด',()=>{colorOn=!colorOn;drawAll();ctl()}),B('🎲 สุ่มสี',()=>recolor(()=>rnd(6))),B('↺ สีเริ่มต้น',()=>recolor((q)=>q.c=0)));
+ VN.forEach(n=>r3.append(B(TH[n].replace('ด้าน',''),()=>{goal=VQ[n].clone()})));
+ [['◀',1,-1],['▶',1,1],['▲',0,-1],['▼',0,1],['⟲',2,1]].forEach(([t,a,s])=>r4.append(B('👁'+t,()=>{goal=(goal||world.quaternion).clone();goal.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(...AX[a]),s*h))})));
+ r4.append(B('🏠',()=>goal=HOME.clone()));
+ if(mode==2&&phase=='build')r4.append(B('ประกอบ ➡️',toAsm,'on'));if(phase=='asm')r4.append(B(done?'แยกออก':'◀ แก้ชิ้นส่วน',toBuild,'on'));
+ c.append(r1,r2,r3,r4)}
+
+/* loop */
+const tmp=new THREE.Vector3();
+function loop(){requestAnimationFrame(loop);
+ if(goal){world.quaternion.slerp(goal,.2);if(world.quaternion.angleTo(goal)<.002){world.quaternion.copy(goal);goal=null}}
+ if(spinW&&!drag)world.quaternion.premultiply(qa.setFromAxisAngle(new THREE.Vector3(0,1,0),.01));
+ let b='',bz=0;VN.forEach(n=>{tmp.set(...VD[n].d).applyQuaternion(world.quaternion);if(tmp.z>bz){bz=tmp.z;b=n}});const al=bz>.93;
+ $('vn').textContent=al?'มองจาก'+TH[b]:'';
+ const all=pcs.filter(p=>p.g.visible).flatMap(abs),k=al&&all.length?b+ver:'';
+ if(k!=lastKey){lastKey=k;$('v2').style.display=k?'block':'none';if(k){$('v2t').textContent='ภาพที่เห็น';const cs=pcs.filter(p=>p.g.visible).flatMap(p=>p.cells.map(q=>HEX[q.c])),cl=colorOn?cs:cs.map(()=>'#f6c35b');drw($('v2c'),proj(all,b),cl)}}
+ R.render(scene,cam)}
+$('t1').onclick=()=>setMode(1);$('t2').onclick=()=>setMode(2);
+rs();setMode(1);loop();
+</script></body></html>
